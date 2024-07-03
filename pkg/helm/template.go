@@ -65,21 +65,20 @@ func (e ExecHelm) Template(name, chart string, opts TemplateOpts) (manifest.List
 // TemplateOpts are additional, non-required options for Helm.Template
 type TemplateOpts struct {
 	// Values to pass to Helm using --values
-	Values map[string]interface{}
-
+	Values map[string]interface{} `json:"values,omitempty"`
 	// Kubernetes api versions used for Capabilities.APIVersions
-	APIVersions []string
+	APIVersions []string `json:"apiVersions,omitempty"`
 	// IncludeCRDs specifies whether CustomResourceDefinitions are included in
 	// the template output
-	IncludeCRDs bool
+	IncludeCRDs bool `json:"includeCRDs,omitempty"`
 	// skip tests from templated output
-	SkipTests bool
+	SkipTests bool `json:"skipTests,omitempty"`
 	// Kubernetes version used for Capabilities.KubeVersion
-	KubeVersion string
+	KubeVersion string `json:"kubeVersion,omitempty"`
 	// Namespace scope for this request
-	Namespace string
+	Namespace string `json:"namespace,omitempty"`
 	// NoHooks specifies whether hooks should be excluded from the template output
-	NoHooks bool
+	NoHooks bool `json:"noHooks,omitempty"`
 }
 
 // Flags returns all options apart from Values as their respective `helm

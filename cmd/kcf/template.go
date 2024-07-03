@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/go-clix/cli"
@@ -23,7 +24,17 @@ func init() {
 				Body: func(args *plugin.MethodArgs) (*plugin.MethodResult, error) {
 					name := args.StrArg(0)
 					chartpath := args.StrArg(1)
-					values := args.Arg(2)
+					opts := args.Arg(2)
+					optsBytes, err := json.Marshal(opts)
+					if err != nil {
+						return nil, fmt.Errorf("marshalling as json: %w", err)
+					}
+
+					templateOpts := helm.TemplateOpts{}
+					err = json.Unmarshal(optsBytes, &templateOpts)
+					if err != nil {
+						return nil, fmt.Errorf("unmarshalling json: %w", err)
+					}
 
 					h := helm.ExecHelm{}
 
@@ -42,12 +53,8 @@ func init() {
 					//	return entry, nil
 					//}
 
-					opts := helm.TemplateOpts{
-						Values: values.(map[string]interface{}),
-					}
-
 					// render resources
-					list, err := h.Template(name, chart, opts)
+					list, err := h.Template(name, chart, templateOpts)
 					if err != nil {
 						return nil, err
 					}
@@ -68,23 +75,29 @@ func init() {
 	})
 }
 
-const code = `
-import kcl_plugin.helm
+// see https://github.com/kcl-lang/kcl/issues/1466
+func KCLRun(pathList []string, opts ...kcl.Option) (*kcl.KCLResultList, error) {
+	args, err := kcl.ParseArgs(pathList, opts...)
+	if err != nil {
+		return nil, err
+	}
 
-_three = helm.template("example", "./charts/example", {"nameOverride": "foo"})
-_three | {
-   deployment_example_foo.metadata.labels.kcl = "true"
+	client := native.NewNativeServiceClient()
+	resp, err := client.ExecProgram(args.ExecProgram_Args)
+	if err != nil {
+		return nil, err
+	}
+	return kcl.ExecResultToKCLResult(&args, resp, args.GetLogger(), kcl.DefaultHooks)
 }
-`
 
 func templateCmd() *cli.Command {
 	cmd := &cli.Command{
-		Use:   "template <path>",
+		Use:   "template ...<path>",
 		Short: "",
 	}
 
 	cmd.Run = func(cmd *cli.Command, args []string) error {
-		result, err := native.Run("main.k", kcl.WithCode(code))
+		result, err := KCLRun(args)
 		if err != nil {
 			return err
 		}
